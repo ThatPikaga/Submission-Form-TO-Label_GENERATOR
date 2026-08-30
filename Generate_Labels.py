@@ -21,6 +21,13 @@ def clean_text(val):
         text = text[:-1].strip() # Removes trailing semicolons from category selectors
     return text
 
+def find_col(df, search_term):
+    """Dynamically finds a column name containing the search term (case-insensitive)."""
+    for col in df.columns:
+        if pd.notna(col) and search_term.lower() in str(col).lower():
+            return col
+    return None
+
 def generate_pdf_labels():
     # Ensure the input folder exists
     if not os.path.exists(INPUT_FOLDER):
@@ -77,19 +84,28 @@ def generate_pdf_labels():
             print(f"  [ERROR] Skipping file. Could not read due to: {e}")
             continue
 
-        for index, row in df.iterrows():
-            # Check row bounds to avoid processing structural trailing blanks
-            # We need at least 14 columns to safely reach the Artist Statement (index 13)
-            if len(row) < 14:
-                continue
+        # --- DYNAMIC COLUMN MAPPING ---
+        # This prevents errors when MS Forms shifts columns (e.g., adding "Last modified time" in Excel exports)
+        col_artist = find_col(df, "full name (participant)") or find_col(df, "Name")
+        col_year = find_col(df, "year level")
+        col_medium = find_col(df, "mediums")
+        col_title = find_col(df, "Title of your artwork")
+        col_dimensions = find_col(df, "dimensions")
+        col_statement = find_col(df, "Artist Statement")
+        col_auction = find_col(df, "silent auction")
 
-            # Target exact 0-indexed form data streams matching your sample layout
-            artist = clean_text(row.iloc[5])      # Column 6: The actual display name
-            role_year = clean_text(row.iloc[6])   # Column 7: Year Group or Parent Role
-            medium = clean_text(row.iloc[7])      # Column 8: Medium category
-            title = clean_text(row.iloc[8])       # Column 9: Artwork Title
-            dimensions = clean_text(row.iloc[10]) # Column 11: Dimensions
-            statement = clean_text(row.iloc[13])  # Column 14: Artist Statement
+        for index, row in df.iterrows():
+            # Extract data using the dynamically found column names
+            artist = clean_text(row[col_artist]) if col_artist else ""
+            role_year = clean_text(row[col_year]) if col_year else ""
+            medium = clean_text(row[col_medium]) if col_medium else ""
+            title = clean_text(row[col_title]) if col_title else ""
+            dimensions = clean_text(row[col_dimensions]) if col_dimensions else ""
+            statement = clean_text(row[col_statement]) if col_statement else ""
+            auction_consent = clean_text(row[col_auction]) if col_auction else ""
+
+            # Determine auction status (green = for auction, red = not for auction)
+            is_for_auction = "yes" in auction_consent.lower()
             
             # Skip empty feedback rows 
             if not artist and not title:
@@ -144,12 +160,30 @@ def generate_pdf_labels():
                 p = Paragraph(safe_text, statement_style)
                 
                 # Define the text area (Frame) to prevent text from spilling over the bottom border
-                # x = text_x, y = 15pts above bottom border, width = label_width - 80, height = 92pts
                 max_width = label_width - 80
                 f = Frame(text_x, y_start + 15, max_width, 92, showBoundary=0, leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
                 
                 # Draw the paragraph inside the frame
                 f.addFromList([p], c)
+
+            # 6. Auction Status Indicator (Top-Right Corner)
+            # Position the status dot in the top-right corner of the label
+            circle_radius = 9
+            circle_x = x_start + label_width - 35
+            circle_y = y_start + label_height - 40
+
+            if is_for_auction:
+                # GREEN dot + "Available for Auction" label
+                c.setFillColorRGB(0.1, 0.6, 0.1)  # Green
+                c.circle(circle_x, circle_y, circle_radius, stroke=0, fill=1)
+
+                c.setFont("Helvetica-Bold", 10)
+                c.setFillColorRGB(0.1, 0.5, 0.1)  # Matching green text
+                c.drawRightString(circle_x - circle_radius - 8, circle_y - 3, "Available for Auction")
+            else:
+                # RED dot only (not for auction)
+                c.setFillColorRGB(0.8, 0.1, 0.1)  # Red
+                c.circle(circle_x, circle_y, circle_radius, stroke=0, fill=1)
             
             # --- DRAW SOLID COMPLETED CARD BORDERS ---
             c.setLineWidth(1.0)              
