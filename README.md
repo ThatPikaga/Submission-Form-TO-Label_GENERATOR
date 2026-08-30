@@ -139,4 +139,4 @@ PDF_OUTPUT    = os.path.join(OUTPUT_FOLDER, "exhibition_labels_landscape.pdf")
 
 - The `iloc` index mapping assumes the current MS Forms question order. If questions are added/removed in the form, indices may shift (header-name-based mapping is a possible future upgrade).
 - Extremely long artist statements are clipped at the frame boundary to preserve the strict physical layout.
-- `run.sh` targets bash environments; Windows users should use the manual commands above.
+- `run.sh` targets bash environments; Windows users should use the `run.bat` file.
