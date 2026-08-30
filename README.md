@@ -1,4 +1,4 @@
-# What Orana Means To Me — Submission Form → Label Generator
+# Submission Form → Label Generator
 
 An automated print pipeline that converts **Microsoft Forms** exhibition submissions directly into a **print-ready, uniformly formatted PDF catalog** of gallery labels — replacing a time-consuming manual design process in Canva.
 
@@ -61,6 +61,8 @@ venv\Scripts\activate            # Windows
 pip install pandas openpyxl reportlab
 python Generate_Labels.py
 ```
+
+`run.bat` automatically creates the virtual environment (if missing), installs `pandas`, `openpyxl` and `reportlab`, activates the environment, and runs the generator.
 
 ---
 
